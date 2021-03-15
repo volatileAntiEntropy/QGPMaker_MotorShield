@@ -1,5 +1,5 @@
 # QGPMaker_MotorShield (Revised)
-A revised version of QGPMaker's Motor Shield Library V5. **In case of copyright issues, this repository may be deleted or merged!*
+A revised version of QGPMaker's Motor Shield Library V5. **In case of copyright issues, this repository may be deleted or merged!**
 
 ## Why Bother?
 - In the original version:
