@@ -6,9 +6,10 @@
 
 #ifndef Encoder_h_
 #define Encoder_h_
+#include <assert.h>
 #include <PinChangeInterrupt.h>
 
-namespace QPGMaker
+namespace QGPMaker
 {
   typedef struct
   {
@@ -16,90 +17,21 @@ namespace QPGMaker
     uint8_t pin2;
     uint8_t state;
     int32_t position;
-  } QGPMakerEncoder_internal_state_t;
+  } EncoderInternalState;
 
-  static QGPMakerEncoder_internal_state_t *interruptArgs[4]; //ENCODER_ARGLIST_SIZE
+  static EncoderInternalState *interruptArgs[4]; //ENCODER_ARGLIST_SIZE
 
-  constexpr uint8_t MaxEncoderNumber = 4;
-
-  constexpr uint8_t EncoderPins[MaxEncoderNumber][2] = {{8, 9}, {6, 7}, {3, 2}, {5, 4}};
-
-  class Encoder
+  class IEncoder
   {
   public:
-    Encoder(uint8_t num)
-    {
-      assert(num >= 1 && num <= 4);
-      num--;
-      uint8_t pin1 = EncoderPins[num][0];
-      uint8_t pin2 = EncoderPins[num][1];
-
-#ifdef INPUT_PULLUP
-      pinMode(pin1, INPUT_PULLUP);
-      pinMode(pin2, INPUT_PULLUP);
-#else
-      pinMode(pin1, INPUT);
-      digitalWrite(pin1, HIGH);
-      pinMode(pin2, INPUT);
-      digitalWrite(pin2, HIGH);
-#endif
-      encoder.pin1 = pin1;
-      encoder.pin2 = pin2;
-      encoder.position = 0;
-
-      delayMicroseconds(2000);
-      encoder.state = 0;
-
-      attach_change_interrupt(pin1, &encoder);
-      attach_change_interrupt(pin2, &encoder);
-    }
-
-    Encoder(uint8_t pin1, uint8_t pin2)
-    {
-#ifdef INPUT_PULLUP
-      pinMode(pin1, INPUT_PULLUP);
-      pinMode(pin2, INPUT_PULLUP);
-#else
-      pinMode(pin1, INPUT);
-      digitalWrite(pin1, HIGH);
-      pinMode(pin2, INPUT);
-      digitalWrite(pin2, HIGH);
-#endif
-      encoder.pin1 = pin1;
-      encoder.pin2 = pin2;
-      encoder.position = 0;
-      // allow time for a passive R-C filter to charge
-      // through the pullup resistors, before reading
-      // the initial state
-      delayMicroseconds(2000);
-      encoder.state = 0;
-
-      attach_change_interrupt(pin1, &encoder);
-      attach_change_interrupt(pin2, &encoder);
-    }
-
-    inline int32_t readAndReset()
-    {
-      int32_t ret = encoder.position;
-      encoder.position = 0;
-      return ret;
-    }
-
-    inline int32_t read()
-    {
-      return encoder.position;
-    }
-
-    inline void write(int32_t p)
-    {
-      encoder.position = p;
-    }
+    static constexpr uint8_t MaxInstanceNumber = 4;
+    static constexpr uint8_t PinConfigs[MaxInstanceNumber][2] = {{8, 9}, {6, 7}, {3, 2}, {5, 4}};
 
   public:
     // update() is not meant to be called from outside Encoder,
     // but it is public to allow static interrupt routines.
     // DO NOT call update() directly from sketches.
-    static void update(QGPMakerEncoder_internal_state_t *arg)
+    static void update(EncoderInternalState *arg)
     {
       uint8_t p1val = digitalRead(arg->pin1);
       uint8_t p2val = digitalRead(arg->pin2);
@@ -134,10 +66,10 @@ namespace QPGMaker
       }
     }
 
-  private:
-    QGPMakerEncoder_internal_state_t encoder;
+  protected:
+    EncoderInternalState encoder;
 
-    static uint8_t attach_change_interrupt(uint8_t pin, QGPMakerEncoder_internal_state_t *state)
+    static bool attach_change_interrupt(uint8_t pin, EncoderInternalState *state)
     {
       switch (pin)
       {
@@ -162,25 +94,75 @@ namespace QPGMaker
         attachPCINT(digitalPinToPCINT(pin), isr3, CHANGE);
         break;
       default:
-        return 0;
+        return false;
       }
-      return 1;
+      return true;
     }
+
     static void isr0(void)
     {
       update(interruptArgs[0]);
     }
+
     static void isr1(void)
     {
       update(interruptArgs[1]);
     }
+
     static void isr2(void)
     {
       update(interruptArgs[2]);
     }
+
     static void isr3(void)
     {
       update(interruptArgs[3]);
+    }
+  };
+
+  template <uint8_t configIndex, uint8_t Pin1 = IEncoder::PinConfigs[configIndex][0], uint8_t Pin2 = IEncoder::PinConfigs[configIndex][1]>
+  class Encoder : public IEncoder
+  {
+  public:
+    Encoder()
+    {
+#ifdef INPUT_PULLUP
+      pinMode(Pin1, INPUT_PULLUP);
+      pinMode(Pin2, INPUT_PULLUP);
+#else
+      pinMode(Pin1, INPUT);
+      digitalWrite(Pin1, HIGH);
+      pinMode(Pin2, INPUT);
+      digitalWrite(Pin2, HIGH);
+#endif
+      encoder.pin1 = Pin1;
+      encoder.pin2 = Pin2;
+      encoder.position = 0;
+      // allow time for a passive R-C filter to charge
+      // through the pullup resistors, before reading
+      // the initial state
+      delayMicroseconds(2000);
+      encoder.state = 0;
+
+      attach_change_interrupt(Pin1, &encoder);
+      attach_change_interrupt(Pin2, &encoder);
+    }
+
+    inline int32_t readAndReset()
+    {
+      int32_t position = this->read();
+      encoder.position = 0;
+      return position;
+    }
+
+    inline int32_t read() const
+    {
+      return encoder.position;
+    }
+
+    inline void write(int32_t pos)
+    {
+      encoder.position = pos;
     }
   };
 }

@@ -7,10 +7,7 @@
 #ifndef _QGPMaker_MotorShield_h_
 #define _QGPMaker_MotorShield_h_
 
-#include <inttypes.h>
-#include <assert.h>
-#include <Wire.h>
-#include "utility/Adafruit_MS_PWMServoDriver.h"
+#include "QGPMaker_MotorShieldBase.hpp"
 
 //#define MOTORDEBUG
 
@@ -28,24 +25,15 @@ namespace QGPMaker
   constexpr uint8_t MOTOR3_A = 5;
   constexpr uint8_t MOTOR3_B = 7;
 
-  constexpr uint8_t MaxDCMotorNumber = 4;
-  constexpr uint8_t MaxServoNumber = 8;
-  constexpr uint8_t MaxStepperMotorNumber = 2;
-
-  constexpr uint8_t DCMotorPins[MaxDCMotorNumber][2] = {{8, 9}, {10, 11}, {15, 14}, {13, 12}};
-  constexpr uint8_t ServoPWMPins[MaxServoNumber] = {1, 2, 3, 4, 5, 6, 7, 8};
-  constexpr uint8_t StepperMotorPins[MaxStepperMotorNumber][2][3]{{{8, 10, 9}, {13, 11, 12}}, {{2, 4, 3}, {7, 5, 6}}};
-
-#if defined(ARDUINO_SAM_DUE)
-  TwoWire &WIRE = Wire1;
-#else
-  TwoWire &WIRE = Wire;
-#endif
+  constexpr uint8_t M1 = 0;
+  constexpr uint8_t M2 = 1;
+  constexpr uint8_t M3 = 2;
+  constexpr uint8_t M4 = 3;
 
 #if (MICROSTEPS == 8)
-  constexpr uint8_t microstepcurve[] = {0, 50, 98, 142, 180, 212, 236, 250, 255};
+  constexpr uint8_t microStepCurve[] = {0, 50, 98, 142, 180, 212, 236, 250, 255};
 #elif (MICROSTEPS == 16)
-  constexpr uint8_t microstepcurve[] = {0, 25, 50, 74, 98, 120, 141, 162, 180, 197, 212, 225, 236, 244, 250, 253, 255};
+  constexpr uint8_t microStepCurve[] = {0, 25, 50, 74, 98, 120, 141, 162, 180, 197, 212, 225, 236, 244, 250, 253, 255};
 #endif
 
   typedef enum __StepperStyle__ : uint8_t
@@ -56,148 +44,93 @@ namespace QGPMaker
     MICROSTEP
   } StepperStyle;
 
-  typedef enum __DCMotorCommand__ : uint8_t
+  typedef enum __MotorCommand__ : uint8_t
   {
     RELEASE,
     BRAKE,
     FORWARD,
     BACKWARD
-  } DCMotorCommand;
-
-  class IMotorShield
-  {
-  public:
-    IMotorShield(const uint8_t addr = 0x60) : _addr(addr), _pwm(this->_addr)
-    {
-    }
-
-    void begin(uint16_t freq = 50)
-    {
-      // init PWM w/_freq
-      WIRE.begin();
-      _pwm.begin();
-      _freq = freq;
-      _pwm.setPWMFreq(_freq); // This is the maximum PWM frequency
-      for (uint8_t i = 0; i < 16; i++)
-      {
-        _pwm.setPWM(i, 0, 0);
-      }
-      this->linkToDCMotors();
-      this->linkToSteppers();
-      this->linkToServos();
-    }
-
-    virtual void linkToDCMotors(void) = 0;
-
-    virtual void linkToSteppers(void) = 0;
-
-    virtual void linkToServos(void) = 0;
-
-    void analogWrite(uint8_t pin, uint16_t value)
-    {
-      if (value > 4095)
-      {
-        _pwm.setPWM(pin, 4096, 0);
-      }
-      else
-      {
-        _pwm.setPWM(pin, 0, value);
-      }
-    }
-
-    void digitalWrite(uint8_t pin, boolean value)
-    {
-      if (value == LOW)
-      {
-        _pwm.setPWM(pin, 0, 0);
-      }
-      else
-      {
-        _pwm.setPWM(pin, 4096, 0);
-      }
-    }
-
-  private:
-    uint8_t _addr;
-    uint16_t _freq;
-    Adafruit_MS_PWMServoDriver _pwm;
-  };
-
-  class IMotorShieldPart
-  {
-  public:
-    IMotorShieldPart() : MC(nullptr) {}
-
-    void link(IMotorShield &shield)
-    {
-      this->MC = &shield;
-    }
-
-  protected:
-    IMotorShield *MC;
-  };
+  } MotorCommand;
 
   template <uint8_t configIndex>
   class DCMotor : public IMotorShieldPart
   {
-    static_assert(configIndex < MaxDCMotorNumber);
-
   public:
-    static constexpr uint8_t IN1pin = DCMotorPins[configIndex][0];
-    static constexpr uint8_t IN2pin = DCMotorPins[configIndex][1];
+    static constexpr uint8_t MaxInstanceNumber = 4;
+    static constexpr uint8_t PinConfigs[MaxInstanceNumber][2] = {{8, 9}, {10, 11}, {15, 14}, {13, 12}};
 
-    DCMotor() : IMotorShieldPart(), _speed(0), MDIR(RELEASE)
+    static_assert(configIndex < MaxInstanceNumber);
+
+    static constexpr uint8_t InputPin1 = PinConfigs[configIndex][0];
+    static constexpr uint8_t InputPin2 = PinConfigs[configIndex][1];
+
+    DCMotor() : IMotorShieldPart(), _speed(0), _command(RELEASE)
     {
     }
 
     void release(void)
     {
-      this->_speed = 0;
-      this->MDIR = RELEASE;
-      MC->digitalWrite(IN1pin, LOW);
-      MC->digitalWrite(IN2pin, LOW);
+      if (this->isOperatable())
+      {
+        this->_speed = 0;
+        this->_command = RELEASE;
+        this->shieldLinked()->digitalWrite(InputPin1, LOW);
+        this->shieldLinked()->digitalWrite(InputPin2, LOW);
+      }
     }
 
     void brake(void)
     {
-      this->_speed = 0;
-      this->MDIR = BRAKE;
-      MC->digitalWrite(IN1pin, HIGH);
-      MC->digitalWrite(IN2pin, HIGH);
+      if (this->isOperatable())
+      {
+        this->_speed = 0;
+        this->_command = BRAKE;
+        this->shieldLinked()->digitalWrite(InputPin1, HIGH);
+        this->shieldLinked()->digitalWrite(InputPin2, HIGH);
+      }
     }
 
     void moveForward(uint8_t speed)
     {
-      this->_speed = speed;
-      this->MDIR = FORWARD;
-      MC->digitalWrite(IN2pin, LOW); // take low first to avoid brake
-      MC->analogWrite(IN1pin, _speed * 16);
+      if (this->isOperatable())
+      {
+        this->_speed = speed;
+        this->_command = FORWARD;
+        this->shieldLinked()->digitalWrite(InputPin2, LOW); // take low first to avoid brake
+        this->shieldLinked()->analogWrite(InputPin1, _speed * 16);
+      }
     }
 
     void moveBackward(uint8_t speed)
     {
-      this->_speed = speed;
-      this->MDIR = BACKWARD;
-      MC->digitalWrite(IN1pin, LOW); // take low first to avoid brake
-      MC->analogWrite(IN2pin, _speed * 16);
+      if (this->isOperatable())
+      {
+        this->_speed = speed;
+        this->_command = BACKWARD;
+        this->shieldLinked()->digitalWrite(InputPin1, LOW); // take low first to avoid brake
+        this->shieldLinked()->analogWrite(InputPin2, _speed * 16);
+      }
     }
 
-    void run(uint8_t speed, DCMotorCommand command)
+    void run(uint8_t speed, MotorCommand command)
     {
-      switch (command)
+      if (this->isOperatable())
       {
-      case RELEASE:
-        this->release();
-        break;
-      case BRAKE:
-        this->brake();
-        break;
-      case FORWARD:
-        this->moveForward(speed);
-        break;
-      case BACKWARD:
-        this->moveBackward(speed);
-        break;
+        switch (command)
+        {
+        case RELEASE:
+          this->release();
+          break;
+        case BRAKE:
+          this->brake();
+          break;
+        case FORWARD:
+          this->moveForward(speed);
+          break;
+        case BACKWARD:
+          this->moveBackward(speed);
+          break;
+        }
       }
     }
 
@@ -206,204 +139,180 @@ namespace QGPMaker
       return this->_speed;
     }
 
-    DCMotorCommand currentCommand(void) const
+    MotorCommand currentCommand(void) const
     {
-      return this->MDIR;
+      return this->_command;
     }
 
   private:
-    uint8_t _speed, MDIR;
+    uint8_t _speed;
+    MotorCommand _command;
   };
 
   template <uint8_t configIndex>
   class StepperMotor : public IMotorShieldPart
   {
-    static_assert(configIndex < MaxStepperMotorNumber);
-
   public:
-    static constexpr uint8_t PWMApin = StepperMotorPins[configIndex][0][0];
-    static constexpr uint8_t AIN1pin = StepperMotorPins[configIndex][0][1];
-    static constexpr uint8_t AIN2pin = StepperMotorPins[configIndex][0][2];
-    static constexpr uint8_t PWMBpin = StepperMotorPins[configIndex][1][0];
-    static constexpr uint8_t BIN1pin = StepperMotorPins[configIndex][1][1];
-    static constexpr uint8_t BIN2pin = StepperMotorPins[configIndex][1][2];
+    static constexpr uint8_t MicroStep = MICROSTEPS;
+    static constexpr uint8_t LogicalMicroStep = MICROSTEPS / 2;
+    static constexpr uint8_t MaxInstanceNumber = 2;
+    static constexpr uint8_t PinConfigs[MaxInstanceNumber][2][3]{{{8, 10, 9}, {13, 11, 12}}, {{2, 4, 3}, {7, 5, 6}}};
 
-    StepperMotor() : IMotorShieldPart(), revsteps(0), currentstep(0)
+    static_assert(configIndex < MaxInstanceNumber);
+
+    static constexpr uint8_t PWMPinA = PinConfigs[configIndex][0][0];
+    static constexpr uint8_t InputPinA1 = PinConfigs[configIndex][0][1];
+    static constexpr uint8_t InputPinA2 = PinConfigs[configIndex][0][2];
+    static constexpr uint8_t PWMPinB = PinConfigs[configIndex][1][0];
+    static constexpr uint8_t InputPinB1 = PinConfigs[configIndex][1][1];
+    static constexpr uint8_t InputPinB2 = PinConfigs[configIndex][1][2];
+
+    static constexpr uint32_t RPMToMicrosecondsPerStep(uint16_t stepsPerRevolution, uint16_t rpm)
+    {
+      return 60000000 / ((uint32_t)stepsPerRevolution * (uint32_t)rpm);
+    }
+
+    static constexpr uint8_t StepToLogicalStep(uint8_t steps)
+    {
+      return (steps / LogicalMicroStep);
+    }
+
+    StepperMotor() : IMotorShieldPart(), _stepsPerRevolution(0), _currentStep(0)
     {
     }
 
-    void step(uint16_t steps, DCMotorCommand dir, StepperStyle style = SINGLE)
+    void setRPM(uint16_t rpm)
     {
-      uint32_t uspers = usperstep;
-      uint8_t ret = 0;
-
-      if (style == INTERLEAVE)
-      {
-        uspers /= 2;
-      }
-      else if (style == MICROSTEP)
-      {
-        uspers /= MICROSTEPS;
-        steps *= MICROSTEPS;
-#ifdef MOTORDEBUG
-        Serial.print("steps = ");
-        Serial.println(steps, DEC);
-#endif
-      }
-
-      while (steps--)
-      {
-        //Serial.println("step!"); Serial.println(uspers);
-        ret = onestep(dir, style);
-        delayMicroseconds(uspers);
-        yield(); // required for ESP8266
-      }
-    }
-
-    void setSpeed(uint16_t rpm)
-    {
-      this->usperstep = 60000000 / ((uint32_t)revsteps * (uint32_t)rpm);
+      this->_microsecondsPerStep = RPMToMicrosecondsPerStep(this->_stepsPerRevolution, rpm);
     }
 
     void setRevolutionStep(uint16_t steps)
     {
-      this->revsteps = steps;
+      this->_stepsPerRevolution = steps;
     }
 
-    uint8_t onestep(DCMotorCommand dir, StepperStyle style)
+    uint8_t currentStep() const
     {
-      uint8_t a, b, c, d;
-      uint8_t ocrb, ocra;
+      return this->_currentStep;
+    }
 
-      ocra = ocrb = 255;
+    uint8_t currentLogicalStep() const
+    {
+      return StepToLogicalStep(this->_currentSteps);
+    }
+
+    void step(uint16_t steps, MotorCommand command, StepperStyle style = SINGLE)
+    {
+      if (this->isOperatable())
+      {
+        uint32_t usPerStep = _microsecondsPerStep;
+
+        if (style == INTERLEAVE)
+        {
+          usPerStep /= 2;
+        }
+        else if (style == MICROSTEP)
+        {
+          usPerStep /= MicroStep;
+          steps *= MicroStep;
+#ifdef MOTORDEBUG
+          Serial.print("steps = ");
+          Serial.println(steps, DEC);
+#endif
+        }
+
+        while (steps--)
+        {
+          this->oneStep(command, style);
+          delayMicroseconds(usPerStep);
+          yield(); // required for ESP8266
+        }
+      }
+    }
+
+    uint8_t oneStep(MotorCommand command, StepperStyle style)
+    {
+      if (command == RELEASE || command == BRAKE || !(this->isOperatable()))
+      {
+        return this->_currentStep;
+      }
+
+      uint8_t curveA = 255, curveB = 255;
 
       // next determine what sort of stepping procedure we're up to
-      if (style == SINGLE)
+      uint8_t logicalSteps = this->currentLogicalStep();
+      switch (style)
       {
-        if ((currentstep / (MICROSTEPS / 2)) % 2)
-        { // we're at an odd step, weird
-          if (dir == FORWARD)
-          {
-            currentstep += MICROSTEPS / 2;
-          }
-          else
-          {
-            currentstep -= MICROSTEPS / 2;
-          }
-        }
-        else if (dir == FORWARD)
+      case SINGLE:
+        this->correctParityAndStep(logicalSteps % 2, command);
+        break;
+      case DOUBLE:
+        this->correctParityAndStep(!(logicalSteps % 2), command);
+        break;
+      case INTERLEAVE:
+        this->makeStep(MicroStep / 2, command);
+        break;
+      case MICROSTEP:
+        this->makeStep(1, command);
+        _currentStep += MicroStep * 4;
+        _currentStep %= MicroStep * 4;
+        if (_currentStep < MicroStep)
         {
-          currentstep += MICROSTEPS;
+          curveA = microStepCurve[MicroStep - _currentStep];
+          curveB = microStepCurve[_currentStep];
+        }
+        else if ((_currentStep >= MicroStep) && (_currentStep < MicroStep * 2))
+        {
+          curveA = microStepCurve[_currentStep - MicroStep];
+          curveB = microStepCurve[MicroStep * 2 - _currentStep];
+        }
+        else if ((_currentStep >= MicroStep * 2) && (_currentStep < MicroStep * 3))
+        {
+          curveA = microStepCurve[MicroStep * 3 - _currentStep];
+          curveB = microStepCurve[_currentStep - MicroStep * 2];
+        }
+        else if ((_currentStep >= MicroStep * 3) && (_currentStep < MicroStep * 4))
+        {
+          curveA = microStepCurve[_currentStep - MicroStep * 3];
+          curveB = microStepCurve[MicroStep * 4 - _currentStep];
         }
         else
         {
-          currentstep -= MICROSTEPS;
+          curveA = curveB = 0;
         }
+        break;
       }
-      else if (style == DOUBLE)
-      {
-        if (!(currentstep / (MICROSTEPS / 2) % 2))
-        { // we're at an even step, weird
-          if (dir == FORWARD)
-          {
-            currentstep += MICROSTEPS / 2;
-          }
-          else
-          {
-            currentstep -= MICROSTEPS / 2;
-          }
-        }
-        else if (dir == FORWARD) // go to the next odd step
-        {
-          currentstep += MICROSTEPS;
-        }
-        else
-        {
-          currentstep -= MICROSTEPS;
-        }
-      }
-      else if (style == INTERLEAVE)
-      {
-        if (dir == FORWARD)
-        {
-          currentstep += MICROSTEPS / 2;
-        }
-        else
-        {
-          currentstep -= MICROSTEPS / 2;
-        }
-      }
-
-      if (style == MICROSTEP)
-      {
-        if (dir == FORWARD)
-        {
-          currentstep++;
-        }
-        else
-        {
-          // BACKWARDS
-          currentstep--;
-        }
-
-        currentstep += MICROSTEPS * 4;
-        currentstep %= MICROSTEPS * 4;
-
-        ocra = ocrb = 0;
-        if ((currentstep >= 0) && (currentstep < MICROSTEPS))
-        {
-          ocra = microstepcurve[MICROSTEPS - currentstep];
-          ocrb = microstepcurve[currentstep];
-        }
-        else if ((currentstep >= MICROSTEPS) && (currentstep < MICROSTEPS * 2))
-        {
-          ocra = microstepcurve[currentstep - MICROSTEPS];
-          ocrb = microstepcurve[MICROSTEPS * 2 - currentstep];
-        }
-        else if ((currentstep >= MICROSTEPS * 2) && (currentstep < MICROSTEPS * 3))
-        {
-          ocra = microstepcurve[MICROSTEPS * 3 - currentstep];
-          ocrb = microstepcurve[currentstep - MICROSTEPS * 2];
-        }
-        else if ((currentstep >= MICROSTEPS * 3) && (currentstep < MICROSTEPS * 4))
-        {
-          ocra = microstepcurve[currentstep - MICROSTEPS * 3];
-          ocrb = microstepcurve[MICROSTEPS * 4 - currentstep];
-        }
-      }
-
-      currentstep += MICROSTEPS * 4;
-      currentstep %= MICROSTEPS * 4;
+      _currentStep += MicroStep * 4;
+      _currentStep %= MicroStep * 4;
 
 #ifdef MOTORDEBUG
       Serial.print("current step: ");
-      Serial.println(currentstep, DEC);
+      Serial.println(_currentStep, DEC);
       Serial.print(" pwmA = ");
-      Serial.print(ocra, DEC);
+      Serial.print(curveA, DEC);
       Serial.print(" pwmB = ");
-      Serial.println(ocrb, DEC);
+      Serial.println(curveB, DEC);
 #endif
-      MC->analogWrite(PWMApin, ocra * 16);
-      MC->analogWrite(PWMBpin, ocrb * 16);
+      this->shieldLinked()->analogWrite(PWMPinA, curveA * 16);
+      this->shieldLinked()->analogWrite(PWMPinB, curveB * 16);
 
       // release all
       uint8_t latch_state = 0; // all motor pins to 0
 
-      //Serial.println(step, DEC);
       if (style == MICROSTEP)
       {
-        if ((currentstep >= 0) && (currentstep < MICROSTEPS))
+        if ((_currentStep >= 0) && (_currentStep < MicroStep))
           latch_state |= 0x03;
-        if ((currentstep >= MICROSTEPS) && (currentstep < MICROSTEPS * 2))
+        if ((_currentStep >= MicroStep) && (_currentStep < MicroStep * 2))
           latch_state |= 0x06;
-        if ((currentstep >= MICROSTEPS * 2) && (currentstep < MICROSTEPS * 3))
+        if ((_currentStep >= MicroStep * 2) && (_currentStep < MicroStep * 3))
           latch_state |= 0x0C;
-        if ((currentstep >= MICROSTEPS * 3) && (currentstep < MICROSTEPS * 4))
+        if ((_currentStep >= MicroStep * 3) && (_currentStep < MicroStep * 4))
           latch_state |= 0x09;
       }
       else
       {
-        switch (currentstep / (MICROSTEPS / 2))
+        switch (this->currentLogicalStep())
         {
         case 0:
           latch_state |= 0x1; // energize coil 1 only
@@ -438,111 +347,141 @@ namespace QGPMaker
 
       if (latch_state & 0x1)
       {
-        // Serial.println(AIN2pin);
-        MC->digitalWrite(AIN2pin, HIGH);
+        // Serial.println(InputPinA2);
+        this->shieldLinked()->digitalWrite(InputPinA2, HIGH);
       }
       else
       {
-        MC->digitalWrite(AIN2pin, LOW);
+        this->shieldLinked()->digitalWrite(InputPinA2, LOW);
       }
       if (latch_state & 0x2)
       {
-        MC->digitalWrite(BIN1pin, HIGH);
-        // Serial.println(BIN1pin);
+        this->shieldLinked()->digitalWrite(InputPinB1, HIGH);
+        // Serial.println(InputPinB1);
       }
       else
       {
-        MC->digitalWrite(BIN1pin, LOW);
+        this->shieldLinked()->digitalWrite(InputPinB1, LOW);
       }
       if (latch_state & 0x4)
       {
-        MC->digitalWrite(AIN1pin, HIGH);
-        // Serial.println(AIN1pin);
+        this->shieldLinked()->digitalWrite(InputPinA1, HIGH);
       }
       else
       {
-        MC->digitalWrite(AIN1pin, LOW);
+        this->shieldLinked()->digitalWrite(InputPinA1, LOW);
       }
       if (latch_state & 0x8)
       {
-        MC->digitalWrite(BIN2pin, HIGH);
-        // Serial.println(BIN2pin);
+        this->shieldLinked()->digitalWrite(InputPinB2, HIGH);
       }
       else
       {
-        MC->digitalWrite(BIN2pin, LOW);
+        this->shieldLinked()->digitalWrite(InputPinB2, LOW);
       }
 
-      return currentstep;
+      return _currentStep;
     }
 
     void release(void)
     {
-      MC->digitalWrite(AIN1pin, LOW);
-      MC->digitalWrite(AIN2pin, LOW);
-      MC->digitalWrite(BIN1pin, LOW);
-      MC->digitalWrite(BIN2pin, LOW);
-      MC->analogWrite(PWMApin, 0);
-      MC->analogWrite(PWMBpin, 0);
+      if (this->isOperatable())
+      {
+        this->shieldLinked()->digitalWrite(InputPinA1, LOW);
+        this->shieldLinked()->digitalWrite(InputPinA2, LOW);
+        this->shieldLinked()->digitalWrite(InputPinB1, LOW);
+        this->shieldLinked()->digitalWrite(InputPinB2, LOW);
+        this->shieldLinked()->analogWrite(PWMPinA, 0);
+        this->shieldLinked()->analogWrite(PWMPinB, 0);
+      }
+    }
+
+  protected:
+    void makeStep(uint8_t step, MotorCommand command)
+    {
+      if (command == FORWARD)
+      {
+        _currentStep += step;
+      }
+      else if (command == BACKWARD)
+      {
+        _currentStep -= step;
+      }
+    }
+
+    void correctParityAndStep(bool wrongParityFlag, MotorCommand command)
+    {
+      if (wrongParityFlag)
+      {
+        // we're at an incorrect parity step, weird
+        this->makeStep(MicroStep / 2, command);
+      }
+      else
+      {
+        // go to next step
+        this->makeStep(MicroStep, command);
+      }
     }
 
   private:
-    uint32_t usperstep;
-    uint16_t revsteps; // # steps per revolution
-    uint8_t currentstep;
-    uint8_t steppernum;
+    uint32_t _microsecondsPerStep;
+    uint16_t _stepsPerRevolution; // # steps per revolution
+    uint8_t _currentStep;
   };
 
   template <uint8_t configIndex>
   class Servo : public IMotorShieldPart
   {
-    static_assert(configIndex < MaxServoNumber);
-
   public:
-    static constexpr uint8_t PWMpin = ServoPWMPins[configIndex];
+    static constexpr uint8_t MaxInstanceNumber = 8;
+    static constexpr uint8_t PinConfigs[MaxInstanceNumber] = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    static_assert(configIndex < MaxInstanceNumber);
+
+    static constexpr uint8_t PWMpin = PinConfigs[configIndex];
+
+    static constexpr double AngleToPulseMilliseconds(uint8_t angle)
+    {
+      //0.5-2.5ms pulse width mapped to 0-180 degrees
+      return (angle <= 180) ? (0.5 + angle / 90.0) : (0.5);
+    }
 
     Servo() : IMotorShieldPart()
     {
     }
 
-    static constexpr double pulseMilliseconds(uint8_t angle)
-    {
-      if (angle <= 180)
-      {
-        //0.5-2.5ms pulse width mapped to 0-180 degrees
-        return 0.5 + angle / 90.0;
-      }
-    }
-
     void setServoPulse(double pulse)
     {
-      double pulselength = 1000000; // 1,000,000 us per second
-      pulselength /= 50;            // 50 Hz
-      pulselength /= 4096;          // 12 bits of resolution
-      pulse *= 1000;
-      pulse /= pulselength;
-      MC->analogWrite(PWMpin, pulse);
+      if (this->isOperatable())
+      {
+        double pulselength = 1000000; // 1,000,000 us per second
+        pulselength /= 50;            // 50 Hz
+        pulselength /= 4096;          // 12 bits of resolution
+        pulse *= 1000;
+        pulse /= pulselength;
+        this->shieldLinked()->analogWrite(PWMpin, pulse);
+      }
     }
 
     void writeDegrees(uint8_t angle)
     {
-      if (angle <= 180)
+      if (angle <= 180 && this->isOperatable())
       {
-        if (this->currentPosition < angle)
+        if (this->_currentPosition < angle)
         {
-          this->currentPosition++;
-          for (; this->currentPosition <= angle; this->currentPosition++)
+          this->_currentPosition++;
+          for (; this->_currentPosition <= angle; this->_currentPosition++)
           {
-            this->setServoPulse(pulseMilliseconds(this->currentPosition));
+            this->setServoPulse(AngleToPulseMilliseconds(this->_currentPosition));
             delayMicroseconds(1000);
           }
         }
-        else if (this->currentPosition > angle)
+        else if (this->_currentPosition > angle)
         {
-          this->currentPosition--;
-          for (; this->currentPosition >= angle; this->currentPosition--)
+          this->_currentPosition--;
+          for (; this->_currentPosition >= angle; this->_currentPosition--)
           {
-            this->setServoPulse(pulseMilliseconds(this->currentPosition));
+            this->setServoPulse(AngleToPulseMilliseconds(this->_currentPosition));
             delayMicroseconds(1000);
           }
         }
@@ -551,11 +490,11 @@ namespace QGPMaker
 
     uint8_t readDegrees(void) const
     {
-      return this->currentPosition;
+      return this->_currentPosition;
     }
 
   private:
-    uint8_t currentPosition;
+    uint8_t _currentPosition;
   };
 
   DCMotor<0> Motor0; //M1
