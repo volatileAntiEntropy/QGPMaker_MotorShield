@@ -41,7 +41,8 @@
 #define ALLLED_OFF_L 0xFC
 #define ALLLED_OFF_H 0xFD
 
-class Adafruit_MS_PWMServoDriver {
+class Adafruit_MS_PWMServoDriver
+{
 public:
   Adafruit_MS_PWMServoDriver(uint8_t addr = 0x40);
   void begin(void);

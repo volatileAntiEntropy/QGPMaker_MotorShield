@@ -5,11 +5,10 @@
 
 namespace QGPMaker
 {
-
 #if defined(ARDUINO_SAM_DUE)
-    TwoWire &WIRE = Wire1;
+    static TwoWire &WIRE = Wire1;
 #else
-    TwoWire &WIRE = Wire;
+    static TwoWire &WIRE = Wire;
 #endif
 
     class IMotorShield
@@ -65,11 +64,17 @@ namespace QGPMaker
             this->linkToSteppers();
         }
 
-        virtual void linkToDCMotors(void) = 0;
+        virtual void linkToDCMotors(void)
+        {
+        }
 
-        virtual void linkToSteppers(void) = 0;
+        virtual void linkToSteppers(void)
+        {
+        }
 
-        virtual void linkToServos(void) = 0;
+        virtual void linkToServos(void)
+        {
+        }
 
     private:
         uint8_t _addr;
@@ -82,22 +87,22 @@ namespace QGPMaker
     public:
         IMotorShieldPart() : _pShield(nullptr) {}
 
-        void link(IMotorShield &shield)
+        inline void link(IMotorShield &shield)
         {
             this->_pShield = &shield;
         }
 
-        IMotorShield *shieldLinked()
+        inline IMotorShield *shieldLinked()
         {
             return this->_pShield;
         }
 
-        const IMotorShield *shieldLinkedConst() const
+        inline const IMotorShield *shieldLinkedConst() const
         {
             return this->_pShield;
         }
 
-        bool isOperatable() const
+        inline bool isOperatable() const
         {
             return this->shieldLinkedConst() != nullptr;
         }

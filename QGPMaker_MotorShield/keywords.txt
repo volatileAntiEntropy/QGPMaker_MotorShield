@@ -1,0 +1,80 @@
+#######################################
+# Syntax Coloring Map
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+QGPMaker	KEYWORD1
+IMotorShield	KEYWORD1
+IMotorShieldPart	KEYWORD1
+MotorCommand	KEYWORD1
+DCMotor	KEYWORD1
+StepperStyle	KEYWORD1
+StepperMotor	KEYWORD1
+Servo	KEYWORD1
+MotorShield	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+setAsActiveShield	KEYWORD2
+link	KEYWORD2
+linkToDCMotors	KEYWORD2
+linkToSteppers	KEYWORD2
+linkToServos	KEYWORD2
+shieldLinked	KEYWORD2
+shieldLinkedConst	KEYWORD2
+isOperatable	KEYWORD2
+release	KEYWORD2
+brake	KEYWORD2
+moveForward	KEYWORD2
+moveBackward	KEYWORD2
+run	KEYWORD2
+currentSpeed	KEYWORD2
+currentCommand	KEYWORD2
+RPMToMicrosecondsPerStep	KEYWORD2
+StepToLogicalStep	KEYWORD2
+setRPM	KEYWORD2
+setRevolutionStep	KEYWORD2
+currentStep	KEYWORD2
+currentLogicalStep	KEYWORD2
+step	KEYWORD2
+oneStep	KEYWORD2
+AngleToPulseMilliseconds	KEYWORD2
+setServoPulse	KEYWORD2
+writeDegrees	KEYWORD2
+readDegrees	KEYWORD2
+
+######################################
+# Constants (LITERAL1)
+#######################################
+MICROSTEPS	LITERAL1
+Motor0	LITERAL1
+Motor1	LITERAL1
+Motor2	LITERAL1
+Motor3	LITERAL1
+Stepper0	LITERAL1
+Stepper1	LITERAL1
+Servo0	LITERAL1
+Servo1	LITERAL1
+Servo2	LITERAL1
+Servo3	LITERAL1
+Servo4	LITERAL1
+Servo5	LITERAL1
+Servo6	LITERAL1
+Servo7	LITERAL1
+RELEASE	LITERAL1
+BRAKE	LITERAL1
+FORWARD	LITERAL1
+BACKWARD	LITERAL1
+SINGLE	LITERAL1
+DOUBLE	LITERAL1
+INTERLEAVE	LITERAL1
+MICROSTEP	LITERAL1
+M1	LITERAL1
+M2	LITERAL1
+M3	LITERAL1
+M4	LITERAL1
+microStepCurve	LITERAL1

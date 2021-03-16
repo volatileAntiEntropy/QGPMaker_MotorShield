@@ -16,34 +16,7 @@
 
 namespace QGPMaker
 {
-  constexpr uint8_t MOTOR1_A = 2;
-  constexpr uint8_t MOTOR1_B = 3;
-  constexpr uint8_t MOTOR2_A = 1;
-  constexpr uint8_t MOTOR2_B = 4;
-  constexpr uint8_t MOTOR4_A = 0;
-  constexpr uint8_t MOTOR4_B = 6;
-  constexpr uint8_t MOTOR3_A = 5;
-  constexpr uint8_t MOTOR3_B = 7;
-
-  constexpr uint8_t M1 = 0;
-  constexpr uint8_t M2 = 1;
-  constexpr uint8_t M3 = 2;
-  constexpr uint8_t M4 = 3;
-
-#if (MICROSTEPS == 8)
-  constexpr uint8_t microStepCurve[] = {0, 50, 98, 142, 180, 212, 236, 250, 255};
-#elif (MICROSTEPS == 16)
-  constexpr uint8_t microStepCurve[] = {0, 25, 50, 74, 98, 120, 141, 162, 180, 197, 212, 225, 236, 244, 250, 253, 255};
-#endif
-
-  typedef enum __StepperStyle__ : uint8_t
-  {
-    SINGLE,
-    DOUBLE,
-    INTERLEAVE,
-    MICROSTEP
-  } StepperStyle;
-
+#if defined(ENABLE_DCMOTOR) || defined(ENABLE_STEPPER)
   typedef enum __MotorCommand__ : uint8_t
   {
     RELEASE,
@@ -51,7 +24,9 @@ namespace QGPMaker
     FORWARD,
     BACKWARD
   } MotorCommand;
+#endif
 
+#if defined(ENABLE_DCMOTOR) && !defined(ENABLE_STEPPER)
   template <uint8_t configIndex>
   class DCMotor : public IMotorShieldPart
   {
@@ -134,12 +109,12 @@ namespace QGPMaker
       }
     }
 
-    uint8_t currentSpeed(void) const
+    inline uint8_t currentSpeed(void) const
     {
       return this->_speed;
     }
 
-    MotorCommand currentCommand(void) const
+    inline MotorCommand currentCommand(void) const
     {
       return this->_command;
     }
@@ -149,6 +124,32 @@ namespace QGPMaker
     MotorCommand _command;
   };
 
+  constexpr uint8_t M1 = 0;
+  constexpr uint8_t M2 = 1;
+  constexpr uint8_t M3 = 2;
+  constexpr uint8_t M4 = 3;
+
+  DCMotor<0> Motor0; //M1
+  DCMotor<1> Motor1; //M2
+  DCMotor<2> Motor2; //M3
+  DCMotor<3> Motor3; //M4
+#endif
+
+#if defined(ENABLE_STEPPER) && !defined(ENABLE_DCMOTOR)
+#if (MICROSTEPS == 8)
+  constexpr uint8_t microStepCurve[] = {0, 50, 98, 142, 180, 212, 236, 250, 255};
+#elif (MICROSTEPS == 16)
+  constexpr uint8_t microStepCurve[] = {0, 25, 50, 74, 98, 120, 141, 162, 180, 197, 212, 225, 236, 244, 250, 253, 255};
+#endif
+
+  typedef enum __StepperStyle__ : uint8_t
+  {
+    SINGLE,
+    DOUBLE,
+    INTERLEAVE,
+    MICROSTEP
+  } StepperStyle;
+
   template <uint8_t configIndex>
   class StepperMotor : public IMotorShieldPart
   {
@@ -156,20 +157,18 @@ namespace QGPMaker
     static constexpr uint8_t MicroStep = MICROSTEPS;
     static constexpr uint8_t LogicalMicroStep = MICROSTEPS / 2;
     static constexpr uint8_t MaxInstanceNumber = 2;
-    static constexpr uint8_t PinConfigs[MaxInstanceNumber][2][3]{{{8, 10, 9}, {13, 11, 12}}, {{2, 4, 3}, {7, 5, 6}}};
+    static constexpr uint8_t PinConfigs[MaxInstanceNumber][2][2]{{{10, 9}, {11, 12}}, {{4, 3}, {5, 6}}};
 
     static_assert(configIndex < MaxInstanceNumber);
 
-    static constexpr uint8_t PWMPinA = PinConfigs[configIndex][0][0];
-    static constexpr uint8_t InputPinA1 = PinConfigs[configIndex][0][1];
-    static constexpr uint8_t InputPinA2 = PinConfigs[configIndex][0][2];
-    static constexpr uint8_t PWMPinB = PinConfigs[configIndex][1][0];
-    static constexpr uint8_t InputPinB1 = PinConfigs[configIndex][1][1];
-    static constexpr uint8_t InputPinB2 = PinConfigs[configIndex][1][2];
+    static constexpr uint8_t InputPinA1 = PinConfigs[configIndex][0][0];
+    static constexpr uint8_t InputPinA2 = PinConfigs[configIndex][0][1];
+    static constexpr uint8_t InputPinB1 = PinConfigs[configIndex][1][0];
+    static constexpr uint8_t InputPinB2 = PinConfigs[configIndex][1][1];
 
     static constexpr uint32_t RPMToMicrosecondsPerStep(uint16_t stepsPerRevolution, uint16_t rpm)
     {
-      return 60000000 / ((uint32_t)stepsPerRevolution * (uint32_t)rpm);
+      return (stepsPerRevolution == 0 || rpm == 0) ? (0) : (60000000 / ((uint32_t)stepsPerRevolution * (uint32_t)rpm));
     }
 
     static constexpr uint8_t StepToLogicalStep(uint8_t steps)
@@ -181,22 +180,22 @@ namespace QGPMaker
     {
     }
 
-    void setRPM(uint16_t rpm)
+    inline void setRPM(uint16_t rpm)
     {
       this->_microsecondsPerStep = RPMToMicrosecondsPerStep(this->_stepsPerRevolution, rpm);
     }
 
-    void setRevolutionStep(uint16_t steps)
+    inline void setRevolutionStep(uint16_t steps)
     {
       this->_stepsPerRevolution = steps;
     }
 
-    uint8_t currentStep() const
+    inline uint8_t currentStep() const
     {
       return this->_currentStep;
     }
 
-    uint8_t currentLogicalStep() const
+    inline uint8_t currentLogicalStep() const
     {
       return StepToLogicalStep(this->_currentSteps);
     }
@@ -293,8 +292,6 @@ namespace QGPMaker
       Serial.print(" pwmB = ");
       Serial.println(curveB, DEC);
 #endif
-      this->shieldLinked()->analogWrite(PWMPinA, curveA * 16);
-      this->shieldLinked()->analogWrite(PWMPinB, curveB * 16);
 
       // release all
       uint8_t latch_state = 0; // all motor pins to 0
@@ -344,40 +341,70 @@ namespace QGPMaker
       Serial.print("Latch: 0x");
       Serial.println(latch_state, HEX);
 #endif
-
-      if (latch_state & 0x1)
+      bool isInputALock = false, isInputBLock = false;
+      uint8_t PWMPinA = 0, PWMPinB = 0;
+      if ((latch_state & 0x1) && (latch_state & 0x4))
       {
-        // Serial.println(InputPinA2);
+        isInputALock = true;
         this->shieldLinked()->digitalWrite(InputPinA2, HIGH);
-      }
-      else
-      {
-        this->shieldLinked()->digitalWrite(InputPinA2, LOW);
-      }
-      if (latch_state & 0x2)
-      {
-        this->shieldLinked()->digitalWrite(InputPinB1, HIGH);
-        // Serial.println(InputPinB1);
-      }
-      else
-      {
-        this->shieldLinked()->digitalWrite(InputPinB1, LOW);
-      }
-      if (latch_state & 0x4)
-      {
         this->shieldLinked()->digitalWrite(InputPinA1, HIGH);
       }
       else
       {
-        this->shieldLinked()->digitalWrite(InputPinA1, LOW);
+        if (latch_state & 0x1)
+        {
+          PWMPinA = InputPinA2;
+        }
+        else
+        {
+          this->shieldLinked()->digitalWrite(InputPinA2, LOW);
+        }
+
+        if (latch_state & 0x4)
+        {
+          PWMPinA = InputPinA1;
+        }
+        else
+        {
+          this->shieldLinked()->digitalWrite(InputPinA1, LOW);
+        }
       }
-      if (latch_state & 0x8)
+
+      if ((latch_state & 0x2) && (latch_state & 0x8))
       {
+        isInputBLock = true;
         this->shieldLinked()->digitalWrite(InputPinB2, HIGH);
+        this->shieldLinked()->digitalWrite(InputPinB1, HIGH);
       }
       else
       {
-        this->shieldLinked()->digitalWrite(InputPinB2, LOW);
+        if (latch_state & 0x2)
+        {
+          PWMPinB = InputPinB1;
+        }
+        else
+        {
+          this->shieldLinked()->digitalWrite(InputPinB1, LOW);
+        }
+
+        if (latch_state & 0x8)
+        {
+          PWMPinB = InputPinB2;
+        }
+        else
+        {
+          this->shieldLinked()->digitalWrite(InputPinB2, LOW);
+        }
+      }
+
+      if (!isInputALock)
+      {
+        this->shieldLinked()->analogWrite(PWMPinA, curveA * 16);
+      }
+
+      if (!isInputBLock)
+      {
+        this->shieldLinked()->analogWrite(PWMPinB, curveB * 16);
       }
 
       return _currentStep;
@@ -391,8 +418,6 @@ namespace QGPMaker
         this->shieldLinked()->digitalWrite(InputPinA2, LOW);
         this->shieldLinked()->digitalWrite(InputPinB1, LOW);
         this->shieldLinked()->digitalWrite(InputPinB2, LOW);
-        this->shieldLinked()->analogWrite(PWMPinA, 0);
-        this->shieldLinked()->analogWrite(PWMPinB, 0);
       }
     }
 
@@ -429,6 +454,11 @@ namespace QGPMaker
     uint8_t _currentStep;
   };
 
+  StepperMotor<0> Stepper0;
+  StepperMotor<1> Stepper1;
+#endif
+
+#ifdef ENABLE_SERVO
   template <uint8_t configIndex>
   class Servo : public IMotorShieldPart
   {
@@ -488,7 +518,7 @@ namespace QGPMaker
       }
     }
 
-    uint8_t readDegrees(void) const
+    inline uint8_t readDegrees(void) const
     {
       return this->_currentPosition;
     }
@@ -496,11 +526,6 @@ namespace QGPMaker
   private:
     uint8_t _currentPosition;
   };
-
-  DCMotor<0> Motor0; //M1
-  DCMotor<1> Motor1; //M2
-  DCMotor<2> Motor2; //M3
-  DCMotor<3> Motor3; //M4
 
   Servo<0> Servo0;
   Servo<1> Servo1;
@@ -510,9 +535,7 @@ namespace QGPMaker
   Servo<5> Servo5;
   Servo<6> Servo6;
   Servo<7> Servo7;
-
-  StepperMotor<0> Stepper0;
-  StepperMotor<1> Stepper1;
+#endif
 
   class MotorShield : public IMotorShield
   {
@@ -521,21 +544,26 @@ namespace QGPMaker
     {
     }
 
-    void linkToDCMotors(void)
+#if defined(ENABLE_DCMOTOR) && !defined(ENABLE_STEPPER)
+    void linkToDCMotors(void) override
     {
       Motor0.link(*this);
       Motor1.link(*this);
       Motor2.link(*this);
       Motor3.link(*this);
     }
+#endif
 
-    void linkToSteppers(void)
+#if defined(ENABLE_STEPPER) && !defined(ENABLE_DCMOTOR)
+    void linkToSteppers(void) override
     {
       Stepper0.link(*this);
       Stepper1.link(*this);
     }
+#endif
 
-    void linkToServos(void)
+#ifdef ENABLE_SERVO
+    void linkToServos(void) override
     {
       Servo0.link(*this);
       Servo1.link(*this);
@@ -546,6 +574,7 @@ namespace QGPMaker
       Servo6.link(*this);
       Servo7.link(*this);
     }
+#endif
   };
 }
 

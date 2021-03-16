@@ -19,7 +19,7 @@ namespace QGPMaker
     int32_t position;
   } EncoderInternalState;
 
-  static EncoderInternalState *interruptArgs[4]; //ENCODER_ARGLIST_SIZE
+  static EncoderInternalState *interruptArgs[4] = {nullptr, nullptr, nullptr, nullptr}; //ENCODER_ARGLIST_SIZE
 
   class IEncoder
   {
@@ -33,64 +33,67 @@ namespace QGPMaker
     // DO NOT call update() directly from sketches.
     static void update(EncoderInternalState *arg)
     {
-      uint8_t p1val = digitalRead(arg->pin1);
-      uint8_t p2val = digitalRead(arg->pin2);
-      uint8_t state = arg->state & 3;
-      if (p1val)
-        state |= 4;
-      if (p2val)
-        state |= 8;
-      arg->state = (state >> 2);
-      switch (state)
+      if (arg != nullptr)
       {
-      case 1:
-      case 7:
-      case 8:
-      case 14:
-        arg->position++;
-        return;
-      case 2:
-      case 4:
-      case 11:
-      case 13:
-        arg->position--;
-        return;
-      case 3:
-      case 12:
-        arg->position += 2;
-        return;
-      case 6:
-      case 9:
-        arg->position -= 2;
-        return;
+        uint8_t p1val = digitalRead(arg->pin1);
+        uint8_t p2val = digitalRead(arg->pin2);
+        uint8_t state = arg->state & 3;
+        if (p1val)
+          state |= 4;
+        if (p2val)
+          state |= 8;
+        arg->state = (state >> 2);
+        switch (state)
+        {
+        case 1:
+        case 7:
+        case 8:
+        case 14:
+          arg->position++;
+          break;
+        case 2:
+        case 4:
+        case 11:
+        case 13:
+          arg->position--;
+          break;
+        case 3:
+        case 12:
+          arg->position += 2;
+          break;
+        case 6:
+        case 9:
+          arg->position -= 2;
+          break;
+        }
       }
     }
 
   protected:
-    EncoderInternalState encoder;
+    EncoderInternalState _encoder;
 
-    static bool attach_change_interrupt(uint8_t pin, EncoderInternalState *state)
+    static bool attach_change_interrupt(uint8_t pin, EncoderInternalState &state)
     {
       switch (pin)
       {
       case 2:
       case 3:
-        interruptArgs[0] = state;
+        interruptArgs[0] = &state;
         attachPCINT(digitalPinToPCINT(pin), isr0, CHANGE);
         break;
       case 4:
       case 5:
-        interruptArgs[1] = state;
+        interruptArgs[1] = &state;
         attachPCINT(digitalPinToPCINT(pin), isr1, CHANGE);
         break;
       case 6:
       case 7:
-        interruptArgs[2] = state;
+        interruptArgs[2] = &state;
         attachPCINT(digitalPinToPCINT(pin), isr2, CHANGE);
         break;
       case 8:
       case 9:
-        interruptArgs[3] = state;
+        interruptArgs[3] = &state;
         attachPCINT(digitalPinToPCINT(pin), isr3, CHANGE);
         break;
       default:
@@ -135,34 +138,34 @@ namespace QGPMaker
       pinMode(Pin2, INPUT);
       digitalWrite(Pin2, HIGH);
 #endif
-      encoder.pin1 = Pin1;
-      encoder.pin2 = Pin2;
-      encoder.position = 0;
+      _encoder.pin1 = Pin1;
+      _encoder.pin2 = Pin2;
+      _encoder.position = 0;
       // allow time for a passive R-C filter to charge
       // through the pullup resistors, before reading
       // the initial state
       delayMicroseconds(2000);
-      encoder.state = 0;
+      _encoder.state = 0;
 
-      attach_change_interrupt(Pin1, &encoder);
-      attach_change_interrupt(Pin2, &encoder);
+      attach_change_interrupt(Pin1, _encoder);
+      attach_change_interrupt(Pin2, _encoder);
     }
 
     inline int32_t readAndReset()
     {
       int32_t position = this->read();
-      encoder.position = 0;
+      _encoder.position = 0;
       return position;
     }
 
     inline int32_t read() const
     {
-      return encoder.position;
+      return _encoder.position;
     }
 
     inline void write(int32_t pos)
     {
-      encoder.position = pos;
+      _encoder.position = pos;
     }
   };
 }

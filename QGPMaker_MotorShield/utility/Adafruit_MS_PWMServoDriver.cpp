@@ -17,10 +17,11 @@
 
 #include "Adafruit_MS_PWMServoDriver.h"
 #include <Wire.h>
+
 #if defined(ARDUINO_SAM_DUE)
-#define WIRE Wire1
+static TwoWire &WIRE = Wire1;
 #else
-#define WIRE Wire
+static TwoWire &WIRE = Wire;
 #endif
 
 Adafruit_MS_PWMServoDriver::Adafruit_MS_PWMServoDriver(uint8_t addr)
