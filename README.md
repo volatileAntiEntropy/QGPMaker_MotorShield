@@ -5,7 +5,8 @@ A revised version of QGPMaker's Motor Shield Library V5. **In case of copyright 
 - In the original version:
   - Bad coding style
   - Fake C++ (A C++ appearance C)
-  - Low Performance (Unused Variables, Runtime Determination of Constants, ...)
+  - Low performance (Unused Variables, Runtime Determination of Constants, ...)
+  - Incompatible stepper motor class (copied from adafruit, but hardware shifted from TB6612FNG to AM2878)
 - In the revised version:
   - Coding style, type names, variable names fixed
   - Better abstraction with true C++ (interfaces and namespace)
@@ -13,3 +14,4 @@ A revised version of QGPMaker's Motor Shield Library V5. **In case of copyright 
   - Reduced use of macro (turned into namespace variables and references)
   - Revised object structure (parts belong to shield -> shield links to parts)
   - Higher performance (27.3\% memory performance boost)
+  - Stepper motor bug fixes
