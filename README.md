@@ -15,3 +15,6 @@ A revised version of QGPMaker's Motor Shield Library V5. **In case of copyright 
   - Revised object structure (parts belong to shield -> shield links to parts)
   - Higher performance (27.3\% memory performance boost)
   - Stepper motor bug fixes
+
+## Notes
+- When create custom encoders, use `configIndex=IEncoder::CustomEncoderIndex`.
