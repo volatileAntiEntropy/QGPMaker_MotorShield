@@ -127,6 +127,7 @@ namespace QGPMaker
   class Encoder : public IEncoder
   {
   public:
+    static constexpr uint8_t CustomEncoderIndex = 4;
     Encoder()
     {
 #ifdef INPUT_PULLUP
