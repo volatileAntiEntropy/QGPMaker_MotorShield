@@ -24,6 +24,7 @@ namespace QGPMaker
   class IEncoder
   {
   public:
+    static constexpr uint8_t CustomEncoderIndex = 4;
     static constexpr uint8_t MaxInstanceNumber = 4;
     static constexpr uint8_t PinConfigs[MaxInstanceNumber][2] = {{8, 9}, {6, 7}, {3, 2}, {5, 4}};
 
@@ -127,7 +128,6 @@ namespace QGPMaker
   class Encoder : public IEncoder
   {
   public:
-    static constexpr uint8_t CustomEncoderIndex = 4;
     Encoder()
     {
 #ifdef INPUT_PULLUP
