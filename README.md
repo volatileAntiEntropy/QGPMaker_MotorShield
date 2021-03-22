@@ -17,4 +17,5 @@ A revised version of QGPMaker's Motor Shield Library V5. **In case of copyright 
   - Stepper motor bug fixes
 
 ## Notes
-- When create custom encoders, use `configIndex=IEncoder::CustomEncoderIndex`.
+- When create custom encoders, use `configIndex=IEncoder::CustomEncoderIndex`
+- `Motor0` and `Motor1` cannot be used with `Stepper0`, `Motor2` and `Motor3` cannot be used with `Stepper1`
