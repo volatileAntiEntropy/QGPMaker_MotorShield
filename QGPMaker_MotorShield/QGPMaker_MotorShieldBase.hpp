@@ -47,14 +47,7 @@ namespace QGPMaker
 
         void digitalWrite(uint8_t pin, boolean value)
         {
-            if (value == LOW)
-            {
-                _pwm.setPWM(pin, 0, 0);
-            }
-            else
-            {
-                _pwm.setPWM(pin, 4096, 0);
-            }
+            _pwm.setPWM(pin, (value == LOW) ? (0) : (4096), 0);
         }
 
         void setAsActiveShield(void)
@@ -90,6 +83,11 @@ namespace QGPMaker
         inline void link(IMotorShield &shield)
         {
             this->_pShield = &shield;
+        }
+
+        inline void reset()
+        {
+            this->_pShield = nullptr;
         }
 
         inline IMotorShield *shieldLinked()

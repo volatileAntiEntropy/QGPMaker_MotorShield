@@ -1,7 +1,5 @@
 #define DEBUG
 
-#define ENABLE_DCMOTOR
-#define ENABLE_SERVO
 #include <QGPMaker_MotorShield.hpp>
 #include <PS2X_lib.h>
 using namespace QGPMaker;

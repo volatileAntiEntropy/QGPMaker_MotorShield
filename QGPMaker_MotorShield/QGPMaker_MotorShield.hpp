@@ -16,7 +16,6 @@
 
 namespace QGPMaker
 {
-#if defined(ENABLE_DCMOTOR) || defined(ENABLE_STEPPER)
   typedef enum __MotorCommand__ : uint8_t
   {
     RELEASE,
@@ -24,9 +23,7 @@ namespace QGPMaker
     FORWARD,
     BACKWARD
   } MotorCommand;
-#endif
 
-#if defined(ENABLE_DCMOTOR) && !defined(ENABLE_STEPPER)
   template <uint8_t configIndex>
   class DCMotor : public IMotorShieldPart
   {
@@ -133,9 +130,7 @@ namespace QGPMaker
   DCMotor<1> Motor1; //M2
   DCMotor<2> Motor2; //M3
   DCMotor<3> Motor3; //M4
-#endif
 
-#if defined(ENABLE_STEPPER) && !defined(ENABLE_DCMOTOR)
 #if (MICROSTEPS == 8)
   constexpr uint8_t microStepCurve[] = {0, 50, 98, 142, 180, 212, 236, 250, 255};
 #elif (MICROSTEPS == 16)
@@ -456,9 +451,7 @@ namespace QGPMaker
 
   StepperMotor<0> Stepper0;
   StepperMotor<1> Stepper1;
-#endif
 
-#ifdef ENABLE_SERVO
   template <uint8_t configIndex>
   class Servo : public IMotorShieldPart
   {
@@ -535,7 +528,6 @@ namespace QGPMaker
   Servo<5> Servo5;
   Servo<6> Servo6;
   Servo<7> Servo7;
-#endif
 
   class MotorShield : public IMotorShield
   {
@@ -544,7 +536,6 @@ namespace QGPMaker
     {
     }
 
-#if defined(ENABLE_DCMOTOR) && !defined(ENABLE_STEPPER)
     void linkToDCMotors(void) override
     {
       Motor0.link(*this);
@@ -552,17 +543,13 @@ namespace QGPMaker
       Motor2.link(*this);
       Motor3.link(*this);
     }
-#endif
 
-#if defined(ENABLE_STEPPER) && !defined(ENABLE_DCMOTOR)
     void linkToSteppers(void) override
     {
       Stepper0.link(*this);
       Stepper1.link(*this);
     }
-#endif
 
-#ifdef ENABLE_SERVO
     void linkToServos(void) override
     {
       Servo0.link(*this);
@@ -574,7 +561,6 @@ namespace QGPMaker
       Servo6.link(*this);
       Servo7.link(*this);
     }
-#endif
   };
 }
 
