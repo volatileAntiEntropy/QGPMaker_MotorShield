@@ -8,6 +8,7 @@
 #define _QGPMaker_MotorShield_h_
 
 #include "QGPMaker_MotorShieldBase.hpp"
+#include "IMotor.hpp"
 
 //#define MOTORDEBUG
 
@@ -16,16 +17,10 @@
 
 namespace QGPMaker
 {
-  typedef enum __MotorCommand__ : uint8_t
-  {
-    RELEASE,
-    BRAKE,
-    FORWARD,
-    BACKWARD
-  } MotorCommand;
+  static MotorShieldManager Manager;
 
   template <uint8_t configIndex>
-  class DCMotor : public IMotorShieldPart
+  class DCMotor : public IDCMotor
   {
   public:
     static constexpr uint8_t MaxInstanceNumber = 4;
@@ -36,57 +31,57 @@ namespace QGPMaker
     static constexpr uint8_t InputPin1 = PinConfigs[configIndex][0];
     static constexpr uint8_t InputPin2 = PinConfigs[configIndex][1];
 
-    DCMotor() : IMotorShieldPart(), _speed(0), _command(RELEASE)
+    DCMotor() : _speed(0), _command(RELEASE)
     {
     }
 
     void release(void)
     {
-      if (this->isOperatable())
+      if (Manager.isOperatable())
       {
         this->_speed = 0;
         this->_command = RELEASE;
-        this->shieldLinked()->digitalWrite(InputPin1, LOW);
-        this->shieldLinked()->digitalWrite(InputPin2, LOW);
+        Manager.shieldLinked()->digitalWrite(InputPin1, LOW);
+        Manager.shieldLinked()->digitalWrite(InputPin2, LOW);
       }
     }
 
     void brake(void)
     {
-      if (this->isOperatable())
+      if (Manager.isOperatable())
       {
         this->_speed = 0;
         this->_command = BRAKE;
-        this->shieldLinked()->digitalWrite(InputPin1, HIGH);
-        this->shieldLinked()->digitalWrite(InputPin2, HIGH);
+        Manager.shieldLinked()->digitalWrite(InputPin1, HIGH);
+        Manager.shieldLinked()->digitalWrite(InputPin2, HIGH);
       }
     }
 
     void moveForward(uint8_t speed)
     {
-      if (this->isOperatable())
+      if (Manager.isOperatable())
       {
         this->_speed = speed;
         this->_command = FORWARD;
-        this->shieldLinked()->digitalWrite(InputPin2, LOW); // take low first to avoid brake
-        this->shieldLinked()->analogWrite(InputPin1, _speed * 16);
+        Manager.shieldLinked()->digitalWrite(InputPin2, LOW); // take low first to avoid brake
+        Manager.shieldLinked()->analogWrite(InputPin1, _speed * 16);
       }
     }
 
     void moveBackward(uint8_t speed)
     {
-      if (this->isOperatable())
+      if (Manager.isOperatable())
       {
         this->_speed = speed;
         this->_command = BACKWARD;
-        this->shieldLinked()->digitalWrite(InputPin1, LOW); // take low first to avoid brake
-        this->shieldLinked()->analogWrite(InputPin2, _speed * 16);
+        Manager.shieldLinked()->digitalWrite(InputPin1, LOW); // take low first to avoid brake
+        Manager.shieldLinked()->analogWrite(InputPin2, _speed * 16);
       }
     }
 
     void run(uint8_t speed, MotorCommand command)
     {
-      if (this->isOperatable())
+      if (Manager.isOperatable())
       {
         switch (command)
         {
@@ -137,16 +132,8 @@ namespace QGPMaker
   constexpr uint8_t microStepCurve[] = {0, 25, 50, 74, 98, 120, 141, 162, 180, 197, 212, 225, 236, 244, 250, 253, 255};
 #endif
 
-  typedef enum __StepperStyle__ : uint8_t
-  {
-    SINGLE,
-    DOUBLE,
-    INTERLEAVE,
-    MICROSTEP
-  } StepperStyle;
-
   template <uint8_t configIndex>
-  class StepperMotor : public IMotorShieldPart
+  class StepperMotor : public IStepperMotor
   {
   public:
     static constexpr uint8_t MicroStep = MICROSTEPS;
@@ -171,7 +158,7 @@ namespace QGPMaker
       return (steps / LogicalMicroStep);
     }
 
-    StepperMotor() : IMotorShieldPart(), _stepsPerRevolution(0), _currentStep(0)
+    StepperMotor() : _stepsPerRevolution(0), _currentStep(0)
     {
     }
 
@@ -192,12 +179,12 @@ namespace QGPMaker
 
     inline uint8_t currentLogicalStep() const
     {
-      return StepToLogicalStep(this->_currentSteps);
+      return StepToLogicalStep(this->_currentStep);
     }
 
     void step(uint16_t steps, MotorCommand command, StepperStyle style = SINGLE)
     {
-      if (this->isOperatable())
+      if (Manager.isOperatable())
       {
         uint32_t usPerStep = _microsecondsPerStep;
 
@@ -226,7 +213,7 @@ namespace QGPMaker
 
     uint8_t oneStep(MotorCommand command, StepperStyle style)
     {
-      if (command == RELEASE || command == BRAKE || !(this->isOperatable()))
+      if (command == RELEASE || command == BRAKE || !(Manager.isOperatable()))
       {
         return this->_currentStep;
       }
@@ -341,8 +328,8 @@ namespace QGPMaker
       if ((latch_state & 0x1) && (latch_state & 0x4))
       {
         isInputALock = true;
-        this->shieldLinked()->digitalWrite(InputPinA2, HIGH);
-        this->shieldLinked()->digitalWrite(InputPinA1, HIGH);
+        Manager.shieldLinked()->digitalWrite(InputPinA2, HIGH);
+        Manager.shieldLinked()->digitalWrite(InputPinA1, HIGH);
       }
       else
       {
@@ -352,7 +339,7 @@ namespace QGPMaker
         }
         else
         {
-          this->shieldLinked()->digitalWrite(InputPinA2, LOW);
+          Manager.shieldLinked()->digitalWrite(InputPinA2, LOW);
         }
 
         if (latch_state & 0x4)
@@ -361,15 +348,15 @@ namespace QGPMaker
         }
         else
         {
-          this->shieldLinked()->digitalWrite(InputPinA1, LOW);
+          Manager.shieldLinked()->digitalWrite(InputPinA1, LOW);
         }
       }
 
       if ((latch_state & 0x2) && (latch_state & 0x8))
       {
         isInputBLock = true;
-        this->shieldLinked()->digitalWrite(InputPinB2, HIGH);
-        this->shieldLinked()->digitalWrite(InputPinB1, HIGH);
+        Manager.shieldLinked()->digitalWrite(InputPinB2, HIGH);
+        Manager.shieldLinked()->digitalWrite(InputPinB1, HIGH);
       }
       else
       {
@@ -379,7 +366,7 @@ namespace QGPMaker
         }
         else
         {
-          this->shieldLinked()->digitalWrite(InputPinB1, LOW);
+          Manager.shieldLinked()->digitalWrite(InputPinB1, LOW);
         }
 
         if (latch_state & 0x8)
@@ -388,18 +375,18 @@ namespace QGPMaker
         }
         else
         {
-          this->shieldLinked()->digitalWrite(InputPinB2, LOW);
+          Manager.shieldLinked()->digitalWrite(InputPinB2, LOW);
         }
       }
 
       if (!isInputALock)
       {
-        this->shieldLinked()->analogWrite(PWMPinA, curveA * 16);
+        Manager.shieldLinked()->analogWrite(PWMPinA, curveA * 16);
       }
 
       if (!isInputBLock)
       {
-        this->shieldLinked()->analogWrite(PWMPinB, curveB * 16);
+        Manager.shieldLinked()->analogWrite(PWMPinB, curveB * 16);
       }
 
       return _currentStep;
@@ -407,12 +394,12 @@ namespace QGPMaker
 
     void release(void)
     {
-      if (this->isOperatable())
+      if (Manager.isOperatable())
       {
-        this->shieldLinked()->digitalWrite(InputPinA1, LOW);
-        this->shieldLinked()->digitalWrite(InputPinA2, LOW);
-        this->shieldLinked()->digitalWrite(InputPinB1, LOW);
-        this->shieldLinked()->digitalWrite(InputPinB2, LOW);
+        Manager.shieldLinked()->digitalWrite(InputPinA1, LOW);
+        Manager.shieldLinked()->digitalWrite(InputPinA2, LOW);
+        Manager.shieldLinked()->digitalWrite(InputPinB1, LOW);
+        Manager.shieldLinked()->digitalWrite(InputPinB2, LOW);
       }
     }
 
@@ -453,7 +440,7 @@ namespace QGPMaker
   StepperMotor<1> Stepper1;
 
   template <uint8_t configIndex>
-  class Servo : public IMotorShieldPart
+  class Servo
   {
   public:
     static constexpr uint8_t MaxInstanceNumber = 8;
@@ -469,26 +456,26 @@ namespace QGPMaker
       return (angle <= 180) ? (0.5 + angle / 90.0) : (0.5);
     }
 
-    Servo() : IMotorShieldPart()
+    Servo() : _currentPosition(0)
     {
     }
 
     void setServoPulse(double pulse)
     {
-      if (this->isOperatable())
+      if (Manager.isOperatable())
       {
         double pulselength = 1000000; // 1,000,000 us per second
         pulselength /= 50;            // 50 Hz
         pulselength /= 4096;          // 12 bits of resolution
         pulse *= 1000;
         pulse /= pulselength;
-        this->shieldLinked()->analogWrite(PWMpin, pulse);
+        Manager.shieldLinked()->analogWrite(PWMpin, pulse);
       }
     }
 
     void writeDegrees(uint8_t angle)
     {
-      if (angle <= 180 && this->isOperatable())
+      if (angle <= 180 && Manager.isOperatable())
       {
         if (this->_currentPosition < angle)
         {
@@ -536,30 +523,9 @@ namespace QGPMaker
     {
     }
 
-    void linkToDCMotors(void) override
+    void setAsActiveShield()
     {
-      Motor0.link(*this);
-      Motor1.link(*this);
-      Motor2.link(*this);
-      Motor3.link(*this);
-    }
-
-    void linkToSteppers(void) override
-    {
-      Stepper0.link(*this);
-      Stepper1.link(*this);
-    }
-
-    void linkToServos(void) override
-    {
-      Servo0.link(*this);
-      Servo1.link(*this);
-      Servo2.link(*this);
-      Servo3.link(*this);
-      Servo4.link(*this);
-      Servo5.link(*this);
-      Servo6.link(*this);
-      Servo7.link(*this);
+      Manager.link(*this);
     }
   };
 }

@@ -1,3 +1,6 @@
+#ifndef QGPMaker_MotorShield_hpp
+#define QGPMaker_MotorShield_hpp
+
 #include <inttypes.h>
 #include <assert.h>
 #include <Wire.h>
@@ -25,49 +28,25 @@ namespace QGPMaker
             _pwm.begin();
             _freq = freq;
             _pwm.setPWMFreq(_freq); // This is the maximum PWM frequency
-            for (uint8_t i = 0; i < 16; i++)
+            for (uint8_t pin = 0; pin < 16; pin++)
             {
-                _pwm.setPWM(i, 0, 0);
+                _pwm.setPWM(pin, 0, 0);
             }
             this->setAsActiveShield();
         }
 
         //12-bit resolution
-        void analogWrite(uint8_t pin, uint16_t value)
+        inline void analogWrite(uint8_t pin, uint16_t value)
         {
-            if (value > 4095)
-            {
-                _pwm.setPWM(pin, 4096, 0);
-            }
-            else
-            {
-                _pwm.setPWM(pin, 0, value);
-            }
+            (value > 4095) ? (_pwm.setPWM(pin, 4096, 0)) : (_pwm.setPWM(pin, 0, value));
         }
 
-        void digitalWrite(uint8_t pin, boolean value)
+        inline void digitalWrite(uint8_t pin, boolean value)
         {
             _pwm.setPWM(pin, (value == LOW) ? (0) : (4096), 0);
         }
 
-        void setAsActiveShield(void)
-        {
-            this->linkToDCMotors();
-            this->linkToServos();
-            this->linkToSteppers();
-        }
-
-        virtual void linkToDCMotors(void)
-        {
-        }
-
-        virtual void linkToSteppers(void)
-        {
-        }
-
-        virtual void linkToServos(void)
-        {
-        }
+        virtual void setAsActiveShield(void) = 0;
 
     private:
         uint8_t _addr;
@@ -75,10 +54,11 @@ namespace QGPMaker
         Adafruit_MS_PWMServoDriver _pwm;
     };
 
-    class IMotorShieldPart
+    //This is singleton, don't create object
+    class MotorShieldManager
     {
     public:
-        IMotorShieldPart() : _pShield(nullptr) {}
+        MotorShieldManager() : _pShield(nullptr) {}
 
         inline void link(IMotorShield &shield)
         {
@@ -95,17 +75,15 @@ namespace QGPMaker
             return this->_pShield;
         }
 
-        inline const IMotorShield *shieldLinkedConst() const
-        {
-            return this->_pShield;
-        }
-
         inline bool isOperatable() const
         {
-            return this->shieldLinkedConst() != nullptr;
+            return this->_pShield != nullptr;
         }
 
-    protected:
+    private:
         IMotorShield *_pShield;
     };
+
 }
+
+#endif
