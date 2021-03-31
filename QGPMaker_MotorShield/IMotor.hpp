@@ -15,14 +15,6 @@ typedef enum __MotorCommand__ : uint8_t
     BACKWARD
 } MotorCommand;
 
-class DCMotorPacket
-{
-public:
-    DCMotorPacket(uint8_t _speed = 0, MotorCommand _command = RELEASE) : speed(_speed), command(_command) {}
-    uint8_t speed;
-    MotorCommand command;
-};
-
 typedef enum __StepperStyle__ : uint8_t
 {
     SINGLE,
@@ -31,18 +23,28 @@ typedef enum __StepperStyle__ : uint8_t
     MICROSTEP
 } StepperStyle;
 
+template<typename T, typename U>
+struct is_same
+{
+    static constexpr bool value = false;
+};
+
+template<typename T>
+struct is_same<T, T>  //specialization
+{
+    static constexpr bool value = true;
+};
+
+template<class ResolutionType = uint8_t>
 class IDCMotor
 {
+    static_assert(is_same<ResolutionType, uint8_t>::value || is_same<ResolutionType, uint16_t>::value);
 public:
     virtual void release() = 0;
     virtual void brake() = 0;
-    virtual void moveForward(uint8_t speed) = 0;
-    virtual void moveBackward(uint8_t speed) = 0;
-    virtual void run(uint8_t speed, MotorCommand command) = 0;
-    virtual void run(const DCMotorPacket &packet)
-    {
-        this->run(packet.speed, packet.command);
-    }
+    virtual void moveForward(ResolutionType speed) = 0;
+    virtual void moveBackward(ResolutionType speed) = 0;
+    virtual void run(ResolutionType speed, MotorCommand command) = 0;
 };
 
 class IStepperMotor
