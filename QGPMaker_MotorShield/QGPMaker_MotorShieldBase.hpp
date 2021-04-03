@@ -17,6 +17,8 @@ namespace QGPMaker
     class IMotorShield
     {
     public:
+        static constexpr uint16_t UnitPulseLengthPerSecond = 1000000 / 4096;
+
         IMotorShield(const uint8_t addr = 0x60) : _addr(addr), _pwm(this->_addr)
         {
         }
@@ -44,6 +46,23 @@ namespace QGPMaker
         inline void digitalWrite(uint8_t pin, boolean value)
         {
             _pwm.setPWM(pin, (value == LOW) ? (0) : (4096), 0);
+        }
+
+        inline void pulseWrite(uint8_t pin, uint16_t pulse) {
+            this->analogWrite(pin, this->pulseLengthToAnalogValue(pulse));
+        }
+
+        inline uint8_t getAddress() const {
+            return this->_addr;
+        }
+
+        inline uint16_t getFrequency() const {
+            return this->_freq;
+        }
+
+        //pulseLength in mcs
+        inline uint16_t pulseLengthToAnalogValue(uint16_t pulseLength) const {
+            return min(pulseLength / (UnitPulseLengthPerSecond / this->getFrequency()), 4096);
         }
 
         virtual void setAsActiveShield(void) = 0;

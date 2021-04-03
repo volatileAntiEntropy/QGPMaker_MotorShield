@@ -17,8 +17,8 @@ constexpr int clipOpen = 120;
 QGPMaker::MotorShield shield;
 QGPMaker::Servo<0> &clip = QGPMaker::Servo0;
 QGPMaker::Servo<3> &lift = QGPMaker::Servo3;
-QGPMaker::DCMotor<0> &leftMotor = QGPMaker::Motor0;
-QGPMaker::DCMotor<2> &rightMotor = QGPMaker::Motor2;
+QGPMaker::DCMotor<M1> &leftMotor = QGPMaker::Motor0;
+QGPMaker::DCMotor<M3> &rightMotor = QGPMaker::Motor2;
 PS2X ps2x;
 
 bool isSlowMode = false;

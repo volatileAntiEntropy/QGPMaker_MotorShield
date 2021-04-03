@@ -463,48 +463,33 @@ namespace QGPMaker
 
 		static constexpr uint8_t PWMpin = PinConfigs[configIndex];
 
-		static constexpr double AngleToPulseMilliseconds(uint8_t angle)
+		static constexpr uint16_t AngleToPulseMicroseconds(uint8_t angle)
 		{
-			//0.5-2.5ms pulse width mapped to 0-180 degrees
-			return (angle <= 180) ? (0.5 + angle / 90.0) : (0.5);
+			//500-2500mcs pulse width mapped to 0-180 degrees
+			return (uint16_t)((angle <= 180) ? (500 + angle / 90.0) : (500));
 		}
 
 		Servo() : _currentPosition(0)
 		{
 		}
 
-		void setServoPulse(double pulse)
-		{
-			if (Manager.isOperatable())
-			{
-				double pulselength = 1000000; // 1,000,000 us per second
-				pulselength /= 50;            // 50 Hz
-				pulselength /= 4096;          // 12 bits of resolution
-				pulse *= 1000;
-				pulse /= pulselength;
-				Manager.shieldLinked()->analogWrite(PWMpin, pulse);
-			}
-		}
-
 		void writeDegrees(uint8_t angle)
 		{
 			if (angle <= 180 && Manager.isOperatable())
-			{
+			{	
 				if (this->_currentPosition < angle)
 				{
-					this->_currentPosition++;
-					for (; this->_currentPosition <= angle; this->_currentPosition++)
+					while (this->_currentPosition < angle)
 					{
-						this->setServoPulse(AngleToPulseMilliseconds(this->_currentPosition));
+						Manager.shieldLinked()->pulseWrite(PWMpin, AngleToPulseMicroseconds(++(this->_currentPosition)));
 						delayMicroseconds(1000);
 					}
 				}
 				else if (this->_currentPosition > angle)
 				{
-					this->_currentPosition--;
-					for (; this->_currentPosition >= angle; this->_currentPosition--)
+					while (this->_currentPosition > angle)
 					{
-						this->setServoPulse(AngleToPulseMilliseconds(this->_currentPosition));
+						Manager.shieldLinked()->pulseWrite(PWMpin, AngleToPulseMicroseconds(--(this->_currentPosition)));
 						delayMicroseconds(1000);
 					}
 				}
