@@ -466,7 +466,7 @@ namespace QGPMaker
 		static constexpr uint16_t AngleToPulseMicroseconds(uint8_t angle)
 		{
 			//500-2500mcs pulse width mapped to 0-180 degrees
-			return (uint16_t)((angle <= 180) ? (500 + angle / 90.0) : (500));
+			return (uint16_t)((angle <= 180) ? (500 + angle / 90.0) : (2500));
 		}
 
 		Servo() : _currentPosition(0)
@@ -477,21 +477,10 @@ namespace QGPMaker
 		{
 			if (angle <= 180 && Manager.isOperatable())
 			{	
-				if (this->_currentPosition < angle)
-				{
-					while (this->_currentPosition < angle)
-					{
-						Manager.shieldLinked()->pulseWrite(PWMpin, AngleToPulseMicroseconds(++(this->_currentPosition)));
-						delayMicroseconds(1000);
-					}
-				}
-				else if (this->_currentPosition > angle)
-				{
-					while (this->_currentPosition > angle)
-					{
-						Manager.shieldLinked()->pulseWrite(PWMpin, AngleToPulseMicroseconds(--(this->_currentPosition)));
-						delayMicroseconds(1000);
-					}
+				while (this->_currentPosition != angle) {
+					Manager.shieldLinked()->pulseWrite(PWMpin, AngleToPulseMicroseconds(
+						(this->_currentPosition > angle) ? (--(this->_currentPosition)) : (++(this->_currentPosition))));
+					delayMicroseconds(1000);
 				}
 			}
 		}
