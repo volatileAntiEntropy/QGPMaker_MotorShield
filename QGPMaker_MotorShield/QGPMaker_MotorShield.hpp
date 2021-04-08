@@ -457,7 +457,7 @@ namespace QGPMaker
 	{
 	public:
 		static constexpr uint8_t MaxInstanceNumber = 8;
-		static constexpr uint8_t PinConfigs[MaxInstanceNumber] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+		static constexpr uint8_t PinConfigs[MaxInstanceNumber] = { 0, 1, 2, 3, 4, 5, 6, 7};
 
 		static_assert(configIndex < MaxInstanceNumber);
 
