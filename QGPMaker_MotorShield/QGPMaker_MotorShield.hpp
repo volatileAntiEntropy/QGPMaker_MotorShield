@@ -10,30 +10,30 @@
 #include "QGPMaker_MotorShieldBase.hpp"
 #include "IMotor.hpp"
 
- //#define MOTORDEBUG
+//#define MOTORDEBUG
 
- //Stepper Motor
+//Stepper Motor
 #define MICROSTEPS 16 // 8 or 16
 
 namespace QGPMaker
 {
 	static MotorShieldManager Manager;
 
-	class IConfigDCMotor {
+	class IConfigDCMotor
+	{
 	public:
 		static constexpr uint8_t MaxInstanceNumber = 4;
 		static constexpr uint8_t CustomInstanceIndex = MaxInstanceNumber;
-		static constexpr uint8_t PinConfigs[MaxInstanceNumber][2] = { {8, 9}, {10, 11}, {15, 14}, {13, 12} };
+		static constexpr uint8_t PinConfigs[MaxInstanceNumber][2] = {{8, 9}, {10, 11}, {15, 14}, {13, 12}};
 	};
 
-	template <uint8_t configIndex, class ResolutionType = uint8_t, uint8_t InputPin1 = IConfigDCMotor::PinConfigs[configIndex][0], uint8_t InputPin2 = IConfigDCMotor::PinConfigs[configIndex][1] >
+	template <uint8_t configIndex, class ResolutionType = uint8_t, uint8_t InputPin1 = IConfigDCMotor::PinConfigs[configIndex][0], uint8_t InputPin2 = IConfigDCMotor::PinConfigs[configIndex][1]>
 	class DCMotor : public IConfigDCMotor, public IDCMotor<ResolutionType>
 	{
 	public:
-
 		static_assert(configIndex <= MaxInstanceNumber);
 
-		DCMotor() :_speed(0), _command(RELEASE) {}
+		DCMotor() : _speed(0), _command(RELEASE) {}
 
 		void release(void)
 		{
@@ -61,18 +61,22 @@ namespace QGPMaker
 		{
 			if (Manager.isOperatable())
 			{
-				if constexpr (is_same<ResolutionType, uint16_t>::value) {
+				if constexpr (is_same<ResolutionType, uint16_t>::value)
+				{
 					this->_speed = min(speed, 4096);
 				}
-				else {
+				else
+				{
 					this->_speed = speed;
 				}
 				this->_command = FORWARD;
 				Manager.shieldLinked()->digitalWrite(InputPin2, LOW); // take low first to avoid brake
-				if constexpr (is_same<ResolutionType, uint16_t>::value) {
+				if constexpr (is_same<ResolutionType, uint16_t>::value)
+				{
 					Manager.shieldLinked()->analogWrite(InputPin1, _speed);
 				}
-				else {
+				else
+				{
 					Manager.shieldLinked()->analogWrite(InputPin1, (uint16_t)_speed * 16);
 				}
 			}
@@ -82,18 +86,22 @@ namespace QGPMaker
 		{
 			if (Manager.isOperatable())
 			{
-				if constexpr (is_same<ResolutionType, uint16_t>::value) {
+				if constexpr (is_same<ResolutionType, uint16_t>::value)
+				{
 					this->_speed = min(speed, 4096);
 				}
-				else {
+				else
+				{
 					this->_speed = speed;
 				}
 				this->_command = BACKWARD;
 				Manager.shieldLinked()->digitalWrite(InputPin1, LOW); // take low first to avoid brake
-				if constexpr (is_same<ResolutionType, uint16_t>::value) {
+				if constexpr (is_same<ResolutionType, uint16_t>::value)
+				{
 					Manager.shieldLinked()->analogWrite(InputPin2, _speed);
 				}
-				else {
+				else
+				{
 					Manager.shieldLinked()->analogWrite(InputPin2, (uint16_t)_speed * 16);
 				}
 			}
@@ -142,24 +150,26 @@ namespace QGPMaker
 	DCMotor<3> Motor3; //M4
 
 #if (MICROSTEPS == 8)
-	constexpr uint8_t microStepCurve[] = { 0, 50, 98, 142, 180, 212, 236, 250, 255 };
+	constexpr uint8_t microStepCurve[] = {0, 50, 98, 142, 180, 212, 236, 250, 255};
 #elif (MICROSTEPS == 16)
-	constexpr uint8_t microStepCurve[] = { 0, 25, 50, 74, 98, 120, 141, 162, 180, 197, 212, 225, 236, 244, 250, 253, 255 };
+	constexpr uint8_t microStepCurve[] = {0, 25, 50, 74, 98, 120, 141, 162, 180, 197, 212, 225, 236, 244, 250, 253, 255};
 #endif
 
-	class IConfigStepperMotor :public IStepperMotor {
+	class IConfigStepperMotor : public IStepperMotor
+	{
 	public:
 		static constexpr uint8_t MicroStep = MICROSTEPS;
 		static constexpr uint8_t LogicalMicroStep = MICROSTEPS / 2;
 		static constexpr uint8_t MaxInstanceNumber = 2;
 		static constexpr uint8_t CustomInstanceIndex = MaxInstanceNumber;
-		static constexpr uint8_t PinConfigs[MaxInstanceNumber][2][2]{ {{10, 9}, {11, 12}}, {{4, 3}, {5, 6}} };
+		static constexpr uint8_t PinConfigs[MaxInstanceNumber][2][2]{{{10, 9}, {11, 12}}, {{4, 3}, {5, 6}}};
 	};
 
 	template <uint8_t configIndex, uint8_t InputPinA1 = IConfigStepperMotor::PinConfigs[configIndex][0][0], uint8_t InputPinA2 = IConfigStepperMotor::PinConfigs[configIndex][0][1], uint8_t InputPinB1 = IConfigStepperMotor::PinConfigs[configIndex][1][0], uint8_t InputPinB2 = IConfigStepperMotor::PinConfigs[configIndex][1][1]>
 	class StepperMotor : public IConfigStepperMotor
 	{
 		static_assert(configIndex <= MaxInstanceNumber);
+
 	public:
 		static constexpr uint32_t RPMToMicrosecondsPerStep(uint16_t stepsPerRevolution, uint16_t rpm)
 		{
@@ -457,16 +467,18 @@ namespace QGPMaker
 	{
 	public:
 		static constexpr uint8_t MaxInstanceNumber = 8;
-		static constexpr uint8_t PinConfigs[MaxInstanceNumber] = { 0, 1, 2, 3, 4, 5, 6, 7};
+		static constexpr uint8_t PinConfigs[MaxInstanceNumber] = {0, 1, 2, 3, 4, 5, 6, 7};
 
 		static_assert(configIndex < MaxInstanceNumber);
 
 		static constexpr uint8_t PWMpin = PinConfigs[configIndex];
 
+		static constexpr double PulsePerDegree = 1000 / 90.0;
+
 		static constexpr uint16_t AngleToPulseMicroseconds(uint8_t angle)
 		{
 			//500-2500mcs pulse width mapped to 0-180 degrees
-			return (uint16_t)((angle <= 180) ? (500 + angle / 90.0) : (2500));
+			return (uint16_t)((angle <= 180) ? (500 + (uint16_t)angle * PulsePerDegree) : (2500));
 		}
 
 		Servo() : _currentPosition(0)
@@ -476,11 +488,22 @@ namespace QGPMaker
 		void writeDegrees(uint8_t angle)
 		{
 			if (angle <= 180 && Manager.isOperatable())
-			{	
-				while (this->_currentPosition != angle) {
-					Manager.shieldLinked()->pulseWrite(PWMpin, AngleToPulseMicroseconds(
-						(this->_currentPosition > angle) ? (--(this->_currentPosition)) : (++(this->_currentPosition))));
-					delayMicroseconds(1000);
+			{
+				if (angle == 0 && this->_currentPosition == 0)
+				{
+					Manager.shieldLinked()->pulseWrite(PWMpin, AngleToPulseMicroseconds(0));
+				}
+				else
+				{
+					uint16_t currentPulse = AngleToPulseMicroseconds(this->_currentPosition);
+					uint16_t targetPulse = AngleToPulseMicroseconds(angle);
+					while (abs(targetPulse - currentPulse) >= PulsePerDegree)
+					{
+						(currentPulse < targetPulse) ? (currentPulse += PulsePerDegree) : (currentPulse -= PulsePerDegree);
+						Manager.shieldLinked()->pulseWrite(PWMpin, currentPulse);
+						delayMicroseconds(20000);
+					}
+					this->_currentPosition = angle;
 				}
 			}
 		}
