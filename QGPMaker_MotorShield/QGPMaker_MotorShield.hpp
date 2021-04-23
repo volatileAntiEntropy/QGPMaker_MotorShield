@@ -8,6 +8,8 @@
 #define _QGPMaker_MotorShield_h_
 
 #include "QGPMaker_MotorShieldBase.hpp"
+#include "utility/AsyncIntervalThresholder.hpp"
+#include "utility/ServoWrapper.hpp"
 #include "IMotor.hpp"
 
 //#define MOTORDEBUG
@@ -143,11 +145,6 @@ namespace QGPMaker
 		ResolutionType _speed;
 		MotorCommand _command;
 	};
-
-	DCMotor<0> Motor0; //M1
-	DCMotor<1> Motor1; //M2
-	DCMotor<2> Motor2; //M3
-	DCMotor<3> Motor3; //M4
 
 #if (MICROSTEPS == 8)
 	constexpr uint8_t microStepCurve[] = {0, 50, 98, 142, 180, 212, 236, 250, 255};
@@ -459,72 +456,53 @@ namespace QGPMaker
 		uint8_t _currentStep;
 	};
 
-	StepperMotor<0> Stepper0;
-	StepperMotor<1> Stepper1;
-
 	template <uint8_t configIndex>
-	class Servo
+	class ServoImplement
 	{
 	public:
 		static constexpr uint8_t MaxInstanceNumber = 8;
 		static constexpr uint8_t PinConfigs[MaxInstanceNumber] = {0, 1, 2, 3, 4, 5, 6, 7};
-
 		static_assert(configIndex < MaxInstanceNumber);
-
 		static constexpr uint8_t PWMpin = PinConfigs[configIndex];
 
-		static constexpr double PulsePerDegree = 1000 / 90.0;
-
-		static constexpr uint16_t AngleToPulseMicroseconds(uint8_t angle)
-		{
-			//500-2500mcs pulse width mapped to 0-180 degrees
-			return (uint16_t)((angle <= 180) ? (500 + (uint16_t)angle * PulsePerDegree) : (2500));
-		}
-
-		Servo() : _currentPosition(0)
+		ServoImplement() : _currentPulse(0)
 		{
 		}
 
-		void writeDegrees(uint8_t angle)
+		bool writeMicroseconds(uint16_t pulseWidth)
 		{
-			if (angle <= 180 && Manager.isOperatable())
+			if (Manager.isOperatable())
 			{
-				if (angle == 0 && this->_currentPosition == 0)
-				{
-					Manager.shieldLinked()->pulseWrite(PWMpin, AngleToPulseMicroseconds(0));
-				}
-				else
-				{
-					uint16_t currentPulse = AngleToPulseMicroseconds(this->_currentPosition);
-					uint16_t targetPulse = AngleToPulseMicroseconds(angle);
-					while (abs(targetPulse - currentPulse) >= PulsePerDegree)
-					{
-						(currentPulse < targetPulse) ? (currentPulse += PulsePerDegree) : (currentPulse -= PulsePerDegree);
-						Manager.shieldLinked()->pulseWrite(PWMpin, currentPulse);
-						delayMicroseconds(20000);
-					}
-					this->_currentPosition = angle;
-				}
+				Manager.shieldLinked()->pulseWrite(PWMpin, pulseWidth);
+				this->_currentPulse = pulseWidth;
+				return true;
 			}
+			return false;
 		}
 
-		inline uint8_t readDegrees(void) const
+		uint16_t readMicroseconds(void) const
 		{
-			return this->_currentPosition;
+			return this->_currentPulse;
+		}
+
+		uint8_t attach(int pin)
+		{
+			return configIndex;
 		}
 
 	private:
-		uint8_t _currentPosition;
+		uint16_t _currentPulse;
 	};
 
-	Servo<0> Servo0;
-	Servo<1> Servo1;
-	Servo<2> Servo2;
-	Servo<3> Servo3;
-	Servo<4> Servo4;
-	Servo<5> Servo5;
-	Servo<6> Servo6;
-	Servo<7> Servo7;
+	template <uint8_t configIndex, uint8_t initialPosition = 0, uint8_t lowerLimit = 0, uint8_t upperLimit = 180, uint16_t pulseChangeRatio = 180>
+	class Servo : public ServoWrapper<ServoImplement<configIndex>, initialPosition, lowerLimit, upperLimit, pulseChangeRatio>
+	{
+	public:
+		Servo() : servoInstance(), ServoWrapper<ServoImplement<configIndex>, initialPosition, lowerLimit, upperLimit, pulseChangeRatio>(servoInstance) {}
+
+	protected:
+		ServoImplement<configIndex> servoInstance;
+	};
 
 	class MotorShield : public IMotorShield
 	{
